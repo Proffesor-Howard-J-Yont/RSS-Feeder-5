@@ -43,6 +43,7 @@ def add_feed(feed_url):
         if feed.bozo == 1:
             loading_step = f"Feed at {feed_url} is malformed or invalid. Error details: {feed.bozo_exception}"
             return
+        print(feed)
         loading_bar = 50.00
 
         loading_step = "Downloading feed cover art..."
@@ -66,22 +67,19 @@ def add_feed(feed_url):
         loading_bar = 75.00
 
         loading_step = "Storing podcast episodes..."
-        # Quote the table name to avoid SQL errors
         c.execute(f'CREATE TABLE IF NOT EXISTS "{table_name}" (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, description TEXT, audio_url TEXT, image_url TEXT, pub_date TIMESTAMP, downloaded BOOLEAN DEFAULT 0)')
+        conn.commit()
         for entry in feed.entries:
-            audio_url = None
-            if 'enclosures' in entry and entry.enclosures:
-                audio_url = entry.enclosures[0].href
-            image_url = entry.get('image', {}).get('href', None)
-            pub_date = entry.get('published', None)
-            # Quote the table name here as well
+            title = entry.title
+            description = entry.summary if 'summary' in entry else ''
+            cover_art_url = entry.image.href if 'image' in entry and 'href' in entry.image else (entry.itunes_image.href if 'itunes_image' in entry and 'href' in entry.itunes_image else None)
+            audio_url = entry.enclosures[0].href if 'enclosures' in entry and len(entry.enclosures) > 0 else None
+            pub_date = entry.published if 'published' in entry else None
+
             c.execute(f'''INSERT INTO "{table_name}" (title, description, audio_url, image_url, pub_date, downloaded)
                           VALUES (?, ?, ?, ?, ?, ?)''',
-                      (entry.title, entry.get('description', ''), audio_url, image_url, pub_date, 0))
-            
-
-
+                      (title, description, audio_url, cover_art_url, pub_date, 0))
+            conn.commit()
     except requests.exceptions.RequestException as e:
         print(f"Connection error for {feed_url}: {e}")
-        return False
-
+        return False    
