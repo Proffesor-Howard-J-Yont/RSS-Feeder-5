@@ -66,14 +66,16 @@ def add_feed(feed_url):
         loading_bar = 75.00
 
         loading_step = "Storing podcast episodes..."
-        c.execute(f"CREATE TABLE IF NOT EXISTS {table_name} (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, description TEXT, audio_url TEXT, image_url TEXT, pub_date TIMESTAMP, downloaded BOOLEAN DEFAULT 0)")
+        # Quote the table name to avoid SQL errors
+        c.execute(f'CREATE TABLE IF NOT EXISTS "{table_name}" (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, description TEXT, audio_url TEXT, image_url TEXT, pub_date TIMESTAMP, downloaded BOOLEAN DEFAULT 0)')
         for entry in feed.entries:
             audio_url = None
             if 'enclosures' in entry and entry.enclosures:
                 audio_url = entry.enclosures[0].href
             image_url = entry.get('image', {}).get('href', None)
             pub_date = entry.get('published', None)
-            c.execute(f'''INSERT INTO {table_name} (title, description, audio_url, image_url, pub_date, downloaded)
+            # Quote the table name here as well
+            c.execute(f'''INSERT INTO "{table_name}" (title, description, audio_url, image_url, pub_date, downloaded)
                           VALUES (?, ?, ?, ?, ?, ?)''',
                       (entry.title, entry.get('description', ''), audio_url, image_url, pub_date, 0))
             
@@ -82,3 +84,4 @@ def add_feed(feed_url):
     except requests.exceptions.RequestException as e:
         print(f"Connection error for {feed_url}: {e}")
         return False
+

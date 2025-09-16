@@ -35,7 +35,7 @@ root.update()
 from customtkinter import *
 from PIL import Image
 from CTkSeparator import CTkSeparator
-
+import backend
 topbgimage = CTkImage(light_image=Image.open('assets/home_img.png'), dark_image=Image.open('assets/home_img.png'), size=(1500, 300))
 
 # ------------- Setup Complete -----------------
@@ -94,7 +94,7 @@ side_menu_label.pack(pady=20, padx=10, anchor='w')
 ctk_separator = CTkSeparator(side_menu, orientation="horizontal", line_weight=2, length=240)
 ctk_separator.pack(fill='x', padx=10, pady=(0, 20))
 
-new_feed_button = CTkButton(side_menu, text=" + New Feed", width=140, command=lambda: print("New Feed Clicked"))
+new_feed_button = CTkButton(side_menu, text=" + New Feed", width=140, command=lambda: newfeed())
 new_feed_button.pack(pady=10, padx=10, fill='x')
 
 search_barE = CTkEntry(side_menu, placeholder_text="Search Feeds", width=140)
@@ -149,6 +149,28 @@ def toggle_side_menu(event=None):
 
     # make sure this function doesnt run multiple times on resize
     root.after(100, lambda: None)
+
+
+def newfeed():
+    clear_board()
+    root.update_idletasks()
+
+    floating_frame = CTkFrame(mainframe, corner_radius=20, fg_color='gray15', width=600, height=400)
+    floating_frame.place(relx=0.5, rely=0.5, anchor='center')
+
+    headerL = CTkLabel(floating_frame, text='Add New Feed', font=('Calibri', 50, 'bold'), justify='left')
+    headerL.pack(pady=40, padx=(70,0), anchor='w')
+
+    feed_entry = CTkEntry(floating_frame, placeholder_text="Enter RSS Feed URL", width=400, font=('Calibri', 20))
+    feed_entry.pack(pady=20, padx=20, fill='x')
+
+    add_button = CTkButton(floating_frame, text="Add Feed", width=150, command=lambda: backend.add_feed(feed_entry.get()))
+    add_button.pack(pady=20, padx=20)
+
+
+
+
+
 # ------------------------------------------
 # Initialize the home screen
 home()
