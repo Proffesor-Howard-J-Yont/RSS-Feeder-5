@@ -43,7 +43,6 @@ def add_feed(feed_url):
         if feed.bozo == 1:
             loading_step = f"Feed at {feed_url} is malformed or invalid. Error details: {feed.bozo_exception}"
             return
-        #print(feed)
         loading_bar = 50.00
 
         loading_step = "Downloading feed cover art..."
@@ -69,6 +68,8 @@ def add_feed(feed_url):
         loading_step = "Storing podcast episodes..."
         c.execute(f'CREATE TABLE IF NOT EXISTS "{table_name}" (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, description TEXT, audio_url TEXT, image_url TEXT, pub_date TIMESTAMP, downloaded BOOLEAN DEFAULT 0)')
         conn.commit()
+        num_entries = len(feed.entries)
+        loading_increment = 25.00 / num_entries
         for entry in feed.entries:
             title = entry.title
             description = entry.summary if 'summary' in entry else ''
@@ -94,23 +95,16 @@ def add_feed(feed_url):
                 pub_date = pub_date.replace('\u200b', '').strip()
                 pub_date = pub_date.replace('\u2060', '').strip()
                 pub_date = pub_date.replace('\ufeff', "").strip()
-            print(title)
-            print()
-            print(description)
-            print()
-            print(cover_art_url)
-            print()
-            print(audio_url)
-            print()
-            print(pub_date)
-            print()
-            print()
 
             c.execute(f'''INSERT INTO "{table_name}" (title, description, audio_url, image_url, pub_date, downloaded)
                           VALUES (?, ?, ?, ?, ?, ?)''',
                       (title, description, audio_url, cover_art_url, pub_date, 0))
             conn.commit()
+            loading_bar += loading_increment
+    
     except requests.exceptions.RequestException as e:
         print(f"Connection error for {feed_url}: {e}")
         return False    
     
+    loading_step = "Feed added successfully!"
+    loading_bar = 100.00
