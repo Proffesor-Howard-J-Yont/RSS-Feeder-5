@@ -36,6 +36,7 @@ from customtkinter import *
 from PIL import Image
 from CTkSeparator import CTkSeparator
 import backend
+import subprocess
 topbgimage = CTkImage(light_image=Image.open('assets/home_img.png'), dark_image=Image.open('assets/home_img.png'), size=(1500, 300))
 
 # ------------- Setup Complete -----------------
@@ -46,7 +47,7 @@ loading_frame.destroy()  # Remove the loading screen
 def clear_board():
     for widget in mainframe.winfo_children():
         widget.destroy()
-    
+
 def home():
     clear_board()
 
@@ -164,10 +165,48 @@ def newfeed():
     feed_entry = CTkEntry(floating_frame, placeholder_text="Enter RSS Feed URL", width=400, font=('Calibri', 20))
     feed_entry.pack(pady=20, padx=20, fill='x')
 
-    add_button = CTkButton(floating_frame, text="Add Feed", width=150, command=lambda: backend.add_feed(feed_entry.get()))
+    add_button = CTkButton(floating_frame, text="Add Feed", width=150, command=lambda: add_feed_click(feed_entry.get()))
     add_button.pack(pady=20, padx=20)
 
+def add_feed_click(feed_url):
+    subprocess.Popen(["python", "backend.py", feed_url])
 
+    clear_board()
+    root.update_idletasks()
+
+    floating_frame = CTkFrame(mainframe, corner_radius=20, fg_color='gray15', width=600, height=400)
+    floating_frame.place(relx=0.5, rely=0.5, anchor='center')
+
+    headerL = CTkLabel(floating_frame, text='Loading New Feed', font=('Calibri', 50, 'bold'))
+    headerL.pack(pady=(40, 0), padx=70)
+
+    subheaderL = CTkLabel(floating_frame, text="This may take a few minutes.", font=('Calibri', 20), text_color='gray40')
+    subheaderL.pack(pady=(10, 10), padx=10)
+
+    subheader2L = CTkLabel(floating_frame, text=backend.loading_step, font=('Calibri', 20, 'italic'))
+    subheader2L.pack(pady=40, padx=10)
+
+    loading_progress = CTkProgressBar(floating_frame, mode="indeterminate", width=400)
+    loading_progress.pack(pady=(0, 40), padx=15, fill="x")
+
+    loading_progress.start()
+    root.update_idletasks()
+
+    #loading_progress.set(backend.loading_bar / 100)
+    root.update_idletasks()
+    subheader2L.configure(text=backend.loading_step)
+    root.update_idletasks()
+
+
+    # update the progress bar until loading is complete
+    '''while backend.loading_bar < 100.00:
+        loading_progress.set(backend.loading_bar / 100)
+        subheader2L.configure(text=backend.loading_step)
+        root.update_idletasks()
+        root.after(1000)'''
+
+
+    
 
 
 

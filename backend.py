@@ -19,8 +19,10 @@ c.execute('''
 ''')
 conn.commit()
 
+global loading_bar
+global loading_step
 loading_bar = 0.00
-loading_step = ""
+loading_step = "Warming up..."
 
 def add_feed(feed_url):
     global loading_bar
