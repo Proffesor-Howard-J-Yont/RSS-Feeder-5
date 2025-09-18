@@ -103,8 +103,11 @@ new_feed_button.pack(pady=10, padx=10, fill='x')
 search_barE = CTkEntry(side_menu, placeholder_text="Search Feeds", width=140)
 search_barE.pack(pady=10, padx=10, fill='x')
 
+# Feeds
+backend.c.execute("SELECT name, description, feed_url, amt_clicked FROM feeds ORDER BY amt_clicked DESC")
+feeds = backend.c.fetchall()
 
-
+CTkButton(side_menu, text=feeds[0][0], width=140).pack(pady=5, padx=10, fill='x')
 # logic to minimize and maximize side menu
 def smallify():
     global side_menu, side_menu_label, new_feed_button, search_barE
