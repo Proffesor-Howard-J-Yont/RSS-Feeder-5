@@ -2,6 +2,8 @@ import sqlite3
 import requests
 import feedparser
 import uuid
+import json
+import sys  # Add this import at the top
 
 conn = sqlite3.connect('feeds.db')
 c = conn.cursor()
@@ -24,30 +26,30 @@ global loading_step
 loading_bar = 0.00
 loading_step = "Warming up..."
 
-def add_feed(feed_url):
-    global loading_bar
-    global loading_step
+def update_progress(progress, step):
+    with open('progress.json', 'w') as f:
+        json.dump({"progress": progress, "step": step}, f)
 
+def add_feed(feed_url):
     try:
-        loading_step = "Validating feed..."
+        update_progress(0, "Starting...")
+
+        update_progress(10, "Validating feed...")
         response = requests.head(feed_url, allow_redirects=True, timeout=5)
         if not 200 <= response.status_code < 400:
             print(f"HTTP error for {feed_url}. Status: {response.status_code}")
             return False
-        loading_bar = 20.00
 
-        loading_step = "Fetching feed content..."
+        update_progress(20, "Fetching feed content...")
         feed_content = requests.get(feed_url, timeout=15)
-        loading_bar = 25.00
 
-        loading_step = "Parsing feed..."
+        update_progress(30, "Parsing feed...")
         feed = feedparser.parse(feed_content.text)
         if feed.bozo == 1:
-            loading_step = f"Feed at {feed_url} is malformed or invalid. Error details: {feed.bozo_exception}"
+            update_progress(0, f"Feed at {feed_url} is malformed or invalid")
             return
-        loading_bar = 50.00
 
-        loading_step = "Downloading feed cover art..."
+        update_progress(50, "Downloading feed cover art...")
         feed_image = None
         if 'image' in feed.feed and 'href' in feed.feed.image:
             image_url = feed.feed.image.href
@@ -57,17 +59,15 @@ def add_feed(feed_url):
                     feed_image = img_response.content
             except requests.exceptions.RequestException as e:
                 print(f"Failed to download feed image from {image_url}: {e}")
-        loading_bar = 60.00
 
-        loading_step = "Storing podcast in database..."
+        update_progress(60, "Storing podcast in database...")
         table_name = str(uuid.uuid4())
         c.executemany('''INSERT OR IGNORE INTO feeds (table_name, name, description, image, feed_url, amt_clicked, auto_update, latest_clicked)
                          VALUES (?, ?, ?, ?, ?, ?, ?, ?)''',
                        [(table_name, feed.feed.title, feed.feed.description, feed_image, feed_url, 0, 0, None)])
         conn.commit()
-        loading_bar = 75.00
 
-        loading_step = "Storing podcast episodes..."
+        update_progress(75, "Storing podcast episodes...")
         c.execute(f'CREATE TABLE IF NOT EXISTS "{table_name}" (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, description TEXT, audio_url TEXT, image_url TEXT, pub_date TIMESTAMP, downloaded BOOLEAN DEFAULT 0)')
         conn.commit()
         num_entries = len(feed.entries)
@@ -102,11 +102,17 @@ def add_feed(feed_url):
                           VALUES (?, ?, ?, ?, ?, ?)''',
                       (title, description, audio_url, cover_art_url, pub_date, 0))
             conn.commit()
-            loading_bar += loading_increment
+            loading_bar = 75.00
+            loading_bar += int(loading_increment)
     
     except requests.exceptions.RequestException as e:
-        print(f"Connection error for {feed_url}: {e}")
-        return False    
-    
-    loading_step = "Feed added successfully!"
-    loading_bar = 100.00
+        update_progress(0, f"Connection error: {str(e)}")
+        return False
+
+    update_progress(100, "Feed added successfully!")
+
+# Add this at the bottom of the file
+if __name__ == "__main__":
+    if len(sys.argv) > 1:
+        feed_url = sys.argv[1]
+        add_feed(feed_url)

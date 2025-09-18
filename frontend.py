@@ -37,6 +37,8 @@ from PIL import Image
 from CTkSeparator import CTkSeparator
 import backend
 import subprocess
+import json
+import os
 topbgimage = CTkImage(light_image=Image.open('assets/home_img.png'), dark_image=Image.open('assets/home_img.png'), size=(1500, 300))
 
 # ------------- Setup Complete -----------------
@@ -169,6 +171,11 @@ def newfeed():
     add_button.pack(pady=20, padx=20)
 
 def add_feed_click(feed_url):
+    # Create progress file
+    with open('progress.json', 'w') as f:
+        json.dump({"progress": 0, "step": "Starting..."}, f)
+
+    # Start the backend process
     subprocess.Popen(["python", "backend.py", feed_url])
 
     clear_board()
@@ -183,33 +190,31 @@ def add_feed_click(feed_url):
     subheaderL = CTkLabel(floating_frame, text="This may take a few minutes.", font=('Calibri', 20), text_color='gray40')
     subheaderL.pack(pady=(10, 10), padx=10)
 
-    subheader2L = CTkLabel(floating_frame, text=backend.loading_step, font=('Calibri', 20, 'italic'))
+    subheader2L = CTkLabel(floating_frame, text="...", font=('Calibri', 20, 'italic'))
     subheader2L.pack(pady=40, padx=10)
 
-    loading_progress = CTkProgressBar(floating_frame, mode="indeterminate", width=400)
+    loading_progress = CTkProgressBar(floating_frame, mode="determinate", width=400)
     loading_progress.pack(pady=(0, 40), padx=15, fill="x")
+    loading_progress.set(0)
 
-    loading_progress.start()
-    root.update_idletasks()
+    def update_progress():
+        if os.path.exists('progress.json'):
+            try:
+                with open('progress.json', 'r') as f:
+                    data = json.load(f)
+                    loading_progress.set(data['progress'] / 100)
+                    subheader2L.configure(text=data['step'])
+                    if data['progress'] < 100:
+                        root.after(100, update_progress)
+                    else:
+                        os.remove('progress.json')
+                        home()  # Return to home screen when complete
+            except:
+                root.after(100, update_progress)
+        else:
+            root.after(100, update_progress)
 
-    #loading_progress.set(backend.loading_bar / 100)
-    root.update_idletasks()
-    subheader2L.configure(text=backend.loading_step)
-    root.update_idletasks()
-
-
-    # update the progress bar until loading is complete
-    '''while backend.loading_bar < 100.00:
-        loading_progress.set(backend.loading_bar / 100)
-        subheader2L.configure(text=backend.loading_step)
-        root.update_idletasks()
-        root.after(1000)'''
-
-
-    
-
-
-
+    update_progress()
 # ------------------------------------------
 # Initialize the home screen
 home()
