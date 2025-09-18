@@ -35,7 +35,7 @@ def add_feed(feed_url):
         loading_bar = 20.00
 
         loading_step = "Fetching feed content..."
-        feed_content = requests.get(feed_url, timeout=5)
+        feed_content = requests.get(feed_url, timeout=15)
         loading_bar = 25.00
 
         loading_step = "Parsing feed..."
@@ -43,7 +43,7 @@ def add_feed(feed_url):
         if feed.bozo == 1:
             loading_step = f"Feed at {feed_url} is malformed or invalid. Error details: {feed.bozo_exception}"
             return
-        print(feed)
+        #print(feed)
         loading_bar = 50.00
 
         loading_step = "Downloading feed cover art..."
@@ -75,6 +75,36 @@ def add_feed(feed_url):
             cover_art_url = entry.image.href if 'image' in entry and 'href' in entry.image else (entry.itunes_image.href if 'itunes_image' in entry and 'href' in entry.itunes_image else None)
             audio_url = entry.enclosures[0].href if 'enclosures' in entry and len(entry.enclosures) > 0 else None
             pub_date = entry.published if 'published' in entry else None
+            # clean up from unusable charachters (just in case) as well as clean up from /u200b, /u2060 charachter
+            title = title.replace('\u200b', '').strip()
+            title = title.replace('\u2060', '').strip()
+            title = title.replace('\ufeff', "").strip()
+            description = description.replace('\u200b', '').strip()
+            description = description.replace('\u2060', '').strip()
+            description = description.replace('\ufeff', "").strip()
+            if cover_art_url:
+                cover_art_url = cover_art_url.replace('\u200b', '').strip()
+                cover_art_url = cover_art_url.replace('\u2060', '').strip()
+                cover_art_url = cover_art_url.replace('\ufeff', "").strip()
+            if audio_url:
+                audio_url = audio_url.replace('\u200b', '').strip()
+                audio_url = audio_url.replace('\u2060', '').strip()
+                audio_url = audio_url.replace('\ufeff', "").strip()
+            if pub_date:
+                pub_date = pub_date.replace('\u200b', '').strip()
+                pub_date = pub_date.replace('\u2060', '').strip()
+                pub_date = pub_date.replace('\ufeff', "").strip()
+            print(title)
+            print()
+            print(description)
+            print()
+            print(cover_art_url)
+            print()
+            print(audio_url)
+            print()
+            print(pub_date)
+            print()
+            print()
 
             c.execute(f'''INSERT INTO "{table_name}" (title, description, audio_url, image_url, pub_date, downloaded)
                           VALUES (?, ?, ?, ?, ?, ?)''',
@@ -83,3 +113,4 @@ def add_feed(feed_url):
     except requests.exceptions.RequestException as e:
         print(f"Connection error for {feed_url}: {e}")
         return False    
+    

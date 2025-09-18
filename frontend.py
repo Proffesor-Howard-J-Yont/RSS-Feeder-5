@@ -142,7 +142,7 @@ def toggle_side_menu(event=None):
             smallify()
         else:
             biggify()
-        print('Ran')
+        #print('Ran')
     else:
         pass
     
