@@ -39,6 +39,7 @@ import backend
 import subprocess
 import json
 import os
+import io
 topbgimage = CTkImage(light_image=Image.open('assets/home_img.png'), dark_image=Image.open('assets/home_img.png'), size=(1500, 300))
 
 # ------------- Setup Complete -----------------
@@ -76,9 +77,130 @@ def home():
     headerL = CTkLabel(mainframe, text='Browse', font=('Calibri', 50, 'bold'), justify='left')
     headerL.pack(pady=40, padx=(70,0), anchor='w')
 
-    # --------- Top 2 -------------
-    top2_frame = CTkFrame(mainframe, corner_radius=20)
-    top2_frame.pack(fill='x', pady=10, padx=10)
+    # --------- Top 1 ------------- This will feature the top 1 podcasts based on clicks
+    top1_frame = CTkFrame(mainframe, corner_radius=20)
+    top1_frame.pack(fill='x', pady=10, padx=10)
+
+    top1 = backend.grab_top_1_podcast()
+    if len(top1) == 0:
+        nofeedL = CTkLabel(top1_frame, text="No feeds available. Please add a new feed.", font=('Calibri', 20), text_color='gray40')
+        nofeedL.place(relx=0.5, rely=0.5, anchor='center')
+    else:
+        feed_name, feed_description, feed_url, amt_clicked = top1[0]
+
+        feed_image = None
+        backend.c.execute("SELECT image FROM feeds WHERE feed_url = ?", (feed_url,))
+        result = backend.c.fetchone()
+        if result and result[0]:
+            feed_image = CTkImage(light_image=Image.open(io.BytesIO(result[0])), dark_image=Image.open(io.BytesIO(result[0])), size=(200, 200))
+        else:
+            feed_image = CTkImage(light_image=Image.open('assets/podcast_placeholder.png'), dark_image=Image.open('assets/podcast_placeholder.png'), size=(150, 150), text='')
+
+        feed_img_label = CTkLabel(top1_frame, image=feed_image, text='')
+        feed_img_label.grid(row=0, column=0, rowspan=3, pady=(20, 10), padx=20)
+
+        feed_label = CTkLabel(top1_frame, text=feed_name, font=('Calibri', 30, 'bold'))
+        feed_label.grid(row=0, column=1, pady=(20, 10), padx=20, sticky='w')
+
+        desc_text_box = CTkTextbox(top1_frame, height=150, font=('Calibri', 15), wrap='word', bg_color=top1_frame.cget("fg_color"), fg_color=top1_frame.cget("fg_color"), border_width=0)
+        desc_text_box.grid(row=1, column=1, pady=(10, 0), padx=20, sticky='nsew')
+        desc_text_box.insert('0.0', feed_description if feed_description else "No description available.")
+        desc_text_box.configure(state='disabled')
+
+        top1_frame.grid_columnconfigure(1, weight=1)  # Make column 1 (description column) expandable
+        top1_frame.grid_rowconfigure(1, weight=1)     # Make row 1 (description row) expandable
+
+        # Click event to view feed
+        top1_frame.bind("<Button-1>", lambda e: view_feed(feed_url))
+        feed_img_label.bind("<Button-1>", lambda e: view_feed(feed_url))
+        feed_label.bind("<Button-1>", lambda e: view_feed(feed_url))
+        desc_text_box.bind("<Button-1>", lambda e: view_feed(feed_url))
+
+def view_feed(feed_url):
+    clear_board()
+    root.update_idletasks()
+
+    view_feed_frame = CTkFrame(mainframe, corner_radius=20)
+    view_feed_frame.pack(fill='x', pady=10, padx=10)
+
+    pod_details = backend.get_feed_details(feed_url)
+    if not pod_details:
+        errorL = CTkLabel(view_feed_frame, text="Error retrieving feed details.", font=('Calibri', 20), text_color='red')
+        errorL.place(relx=0.5, rely=0.5, anchor='center')
+
+        # back button to return home
+        back_button = CTkButton(view_feed_frame, text="Back", width=100, command=lambda: home())
+        back_button.pack(pady=10, padx=10, anchor='w')
+        return
+
+    if len(pod_details) == 0:
+        nofeedL = CTkLabel(view_feed_frame, text="No feeds available. Please add a new feed.", font=('Calibri', 20), text_color='gray40')
+        nofeedL.place(relx=0.5, rely=0.5, anchor='center')
+        # back button to return home
+        back_button = CTkButton(view_feed_frame, text="Back", width=100, command=lambda: home())
+        back_button.pack(pady=10, padx=10, anchor='w')
+        return
+    else:
+        feed_name, feed_description, feed_url, amt_clicked = pod_details[0]
+
+        feed_image = None
+        backend.c.execute("SELECT image FROM feeds WHERE feed_url = ?", (feed_url,))
+        result = backend.c.fetchone()
+        if result and result[0]:
+            feed_image = CTkImage(light_image=Image.open(io.BytesIO(result[0])), dark_image=Image.open(io.BytesIO(result[0])), size=(200, 200))
+        else:
+            feed_image = CTkImage(light_image=Image.open('assets/podcast_placeholder.png'), dark_image=Image.open('assets/podcast_placeholder.png'), size=(150, 150), text='')
+
+        feed_img_label = CTkLabel(view_feed_frame, image=feed_image, text='')
+        feed_img_label.grid(row=0, column=0, rowspan=3, pady=(20, 10), padx=20)
+
+        feed_label = CTkLabel(view_feed_frame, text=feed_name, font=('Calibri', 30, 'bold'))
+        feed_label.grid(row=0, column=1, pady=(20, 10), padx=20, sticky='w')
+
+        desc_text_box = CTkTextbox(view_feed_frame, height=150, font=('Calibri', 15), wrap='word', bg_color=view_feed_frame.cget("fg_color"), fg_color=view_feed_frame.cget("fg_color"), border_width=0)
+        desc_text_box.grid(row=1, column=1, pady=(10, 0), padx=20, sticky='nsew')
+        desc_text_box.insert('0.0', feed_description if feed_description else "No description available.")
+        desc_text_box.configure(state='disabled')
+
+        view_feed_frame.grid_columnconfigure(1, weight=1)  # Make column 1 (description column) expandable
+        view_feed_frame.grid_rowconfigure(1, weight=1)     # Make row 1 (description row) expandable
+
+        # view episodes here
+        latest_episodes = CTkLabel(mainframe, text='Latest', font=('Calibri', 40, 'italic'), justify='left')
+        latest_episodes.pack(pady=(70, 20), padx=(70,0), anchor='w')
+
+        episodes_showed = 0
+
+        for episode in backend.get_episodes_for_feed(feed_url):
+            if episodes_showed >= 20:
+                break
+
+            episodes_showed += 1
+
+            ep_sep = CTkSeparator(mainframe, orientation="horizontal", line_weight=2)
+            ep_sep.pack(fill='x', padx=20, pady=20, expand=True)
+
+            ep_frame = CTkFrame(mainframe, corner_radius=10)
+            ep_frame.pack(fill='x', pady=5, padx=10)
+
+            ep_title = CTkLabel(ep_frame, text=episode[0], font=('Calibri', 20, 'bold'))
+            ep_title.grid(row=0, column=0, pady=(10, 0), padx=20, sticky='w')
+
+            ep_desc = CTkTextbox(ep_frame, height=100, font=('Calibri', 12), wrap='word', bg_color=ep_frame.cget("fg_color"), fg_color=ep_frame.cget("fg_color"), border_width=0)
+            ep_desc.grid(row=1, column=0, pady=(10, 0), padx=20, sticky='nsew')
+            ep_desc.insert('0.0', episode[1] if episode[1] else "No description available.")
+
+            ep_pub_date = CTkLabel(ep_frame, text=f"Published on: {episode[4] if episode[4] else 'Unknown'}", font=('Calibri', 12), text_color='gray40')
+            ep_pub_date.grid(row=2, column=0, pady=(0, 10), padx=20, sticky='w')
+
+            ep_frame.grid_columnconfigure(0, weight=1)  # Make column 0 expandable
+
+            if episodes_showed % 2 == 0:
+                ep_frame.configure(fg_color='gray20')
+                ep_desc.configure(bg_color='gray20', fg_color='gray20')
+
+            root.update()
+
 
 
 global side_menu, new_feed_button, search_barE, disable_auto_resize, side_menu_label, ctk_separator

@@ -111,6 +111,24 @@ def add_feed(feed_url):
 
     update_progress(100, "Feed added successfully!")
 
+def grab_top_1_podcast():
+    c.execute("SELECT name, description, feed_url, amt_clicked FROM feeds ORDER BY amt_clicked DESC LIMIT 1")
+    return c.fetchall()
+
+def get_feed_details(feed_url):
+    c.execute("SELECT name, description, feed_url, amt_clicked FROM feeds WHERE feed_url = ?", (feed_url,))
+    return c.fetchall()
+
+def get_episodes_for_feed(feed_url):
+    # Get the table name for the feed
+    c.execute("SELECT table_name FROM feeds WHERE feed_url = ?", (feed_url,))
+    result = c.fetchone()
+    if not result:
+        return []
+    table_name = result[0]
+    c.execute(f'SELECT title, description, audio_url, image_url, pub_date, downloaded FROM "{table_name}"')
+    return c.fetchall()
+
 # Add this at the bottom of the file
 if __name__ == "__main__":
     if len(sys.argv) > 1:
