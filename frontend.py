@@ -116,6 +116,60 @@ def home():
         feed_label.bind("<Button-1>", lambda e: view_feed(feed_url))
         desc_text_box.bind("<Button-1>", lambda e: view_feed(feed_url))
 
+    # --------- Top podcasts slider -------------
+    top_podcasts_frame = CTkFrame(mainframe, corner_radius=20, height=250)
+    top_podcasts_frame.pack(fill='x', pady=10, padx=10)
+
+    top_podcastsL = CTkLabel(top_podcasts_frame, text='Top Podcasts', font=('Calibri', 30, 'bold'), justify='left')
+    top_podcastsL.grid(row=0, column=0, padx=20, pady=10, sticky='w', columnspan=2)
+
+    # Create a canvas and side arrow buttons for horizontal scrolling
+    canvas = CTkCanvas(top_podcasts_frame, height=250, highlightthickness=0, bg='grey17')
+    canvas.grid(row=1, column=1, padx=(20,0), pady=10, sticky='nsew')
+
+    scrollbar = CTkScrollbar(top_podcasts_frame, orientation="horizontal", command=canvas.xview)
+    #scrollbar.grid(row=2, column=1, padx=(20,0), pady=(0,10), sticky='ew')
+    canvas.configure(xscrollcommand=scrollbar.set)
+
+    scrollable_frame = CTkFrame(canvas, fg_color=top_podcasts_frame.cget("fg_color"))
+    canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+    scrollable_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox('all')))
+    top_podcasts_frame.grid_columnconfigure(1, weight=1)
+    canvas.bind("<MouseWheel>", lambda event: canvas.xview_scroll(int(-1*(event.delta/120)), "units"))
+
+    # Button to scroll left
+    def scroll_left():
+        canvas.xview_scroll(-1, "units")
+    left_button = CTkButton(top_podcasts_frame, text="⬅️", width=30, height=50, command=scroll_left)
+    left_button.grid(row=1, column=0, padx=(20,0), pady=10)
+
+    # Button to scroll right
+    def scroll_right():
+        canvas.xview_scroll(1, "units")
+    right_button = CTkButton(top_podcasts_frame, text="➡️", width=30, height=50, command=scroll_right)
+    right_button.grid(row=1, column=2, padx=(0,20), pady=10)
+    
+    col = 0
+    for feed in backend.grab_top_10_podcasts():
+        feed_name, feed_description, feed_url, amt_clicked = feed
+
+        feed_image = None
+        backend.c.execute("SELECT image FROM feeds WHERE feed_url = ?", (feed_url,))
+        result = backend.c.fetchone()
+        if result and result[0]:
+            feed_image = CTkImage(light_image=Image.open(io.BytesIO(result[0])), dark_image=Image.open(io.BytesIO(result[0])), size=(150, 150))
+        else:
+            feed_image = CTkImage(light_image=Image.open('assets/podcast_placeholder.png'), dark_image=Image.open('assets/podcast_placeholder.png'), size=(150, 150), text='')
+
+        feed_img_button = CTkButton(scrollable_frame, width=150, height=200, text='', compound='top', fg_color='transparent', hover_color='gray25', font=('Calibri', 15, 'bold'), image=feed_image, command=lambda url=feed_url: view_feed(url))
+        feed_img_button.grid(row=0, column=col, padx=10, pady=10)
+        col += 1
+
+    
+
+
+
+
 def view_feed(feed_url):
     clear_board()
     root.update_idletasks()
@@ -225,11 +279,7 @@ new_feed_button.pack(pady=10, padx=10, fill='x')
 search_barE = CTkEntry(side_menu, placeholder_text="Search Feeds", width=140)
 search_barE.pack(pady=10, padx=10, fill='x')
 
-# Feeds
-backend.c.execute("SELECT name, description, feed_url, amt_clicked FROM feeds ORDER BY amt_clicked DESC")
-feeds = backend.c.fetchall()
 
-CTkButton(side_menu, text=feeds[0][0], width=140).pack(pady=5, padx=10, fill='x')
 # logic to minimize and maximize side menu
 def smallify():
     global side_menu, side_menu_label, new_feed_button, search_barE
@@ -346,7 +396,7 @@ home()
 root.update()
 # Bind the toggle function to root window resize event
 root.bind("<Configure>", toggle_side_menu)
-side_menu_label.bind("<Button-1>", toggle_side_menu)
+side_menu_label.bind("<Button-1>", lambda e: home())
 search_barE.bind("<Button-1>", toggle_side_menu)
 # ------------------------------------------
 root.mainloop()
