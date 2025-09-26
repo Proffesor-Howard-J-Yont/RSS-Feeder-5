@@ -134,6 +134,12 @@ def grab_top_10_podcasts():
     # Skip the first one (top 1) and return the next 5
     return c.fetchall()[1:11]
 
+def search_feeds(query):
+    like_query = f"%{query}%"
+    if query.strip() == "":
+        return []
+    c.execute("SELECT name, description, feed_url, amt_clicked FROM feeds WHERE name LIKE ? OR description LIKE ? LIMIT 20", (like_query, like_query))
+    return c.fetchall()
 
 # Add this at the bottom of the file
 if __name__ == "__main__":

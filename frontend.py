@@ -110,11 +110,13 @@ def home():
         top1_frame.grid_columnconfigure(1, weight=1)  # Make column 1 (description column) expandable
         top1_frame.grid_rowconfigure(1, weight=1)     # Make row 1 (description row) expandable
 
+        top1_feed_url = feed_url
+
         # Click event to view feed
-        top1_frame.bind("<Button-1>", lambda e: view_feed(feed_url))
-        feed_img_label.bind("<Button-1>", lambda e: view_feed(feed_url))
-        feed_label.bind("<Button-1>", lambda e: view_feed(feed_url))
-        desc_text_box.bind("<Button-1>", lambda e: view_feed(feed_url))
+        top1_frame.bind("<Button-1>", lambda e: view_feed(top1_feed_url))
+        feed_img_label.bind("<Button-1>", lambda e: view_feed(top1_feed_url))
+        feed_label.bind("<Button-1>", lambda e: view_feed(top1_feed_url))
+        desc_text_box.bind("<Button-1>", lambda e: view_feed(top1_feed_url))
 
     # --------- Top podcasts slider -------------
     top_podcasts_frame = CTkFrame(mainframe, corner_radius=20, height=250)
@@ -255,7 +257,49 @@ def view_feed(feed_url):
 
             root.update()
 
+def search(e):
+    global search_results_frame
+    query = search_barE.get().strip()
+    results = backend.search_feeds(query)
+    for result in search_results_frame.winfo_children():
+        result.destroy()
 
+    if len(results) == 0:
+        noresultL = CTkLabel(search_results_frame, text="No results found.", font=('Calibri', 15), text_color='gray40')
+        noresultL.pack(pady=10, padx=10)
+
+    for feed in results:
+        feed_name, feed_description, feed_url, amt_clicked = feed
+
+        feed_image = None
+        backend.c.execute("SELECT image FROM feeds WHERE feed_url = ?", (feed_url,))
+        result = backend.c.fetchone()
+        if result and result[0]:
+            feed_image = CTkImage(light_image=Image.open(io.BytesIO(result[0])), dark_image=Image.open(io.BytesIO(result[0])), size=(50, 50))
+        else:
+            feed_image = CTkImage(light_image=Image.open('assets/podcast_placeholder.png'), dark_image=Image.open('assets/podcast_placeholder.png'), size=(50, 50), text='')
+
+        result_frame = CTkFrame(search_results_frame, corner_radius=10)
+        result_frame.pack(fill='x', pady=5)
+
+        feed_img_button = CTkButton(result_frame, width=50, height=50, text='', compound='top', fg_color='transparent', hover_color='gray25', font=('Calibri', 15, 'bold'), image=feed_image, command=lambda url=feed_url: view_feed(url))
+        feed_img_button.grid(row=0, column=0, padx=10, pady=10)
+
+        feed_label = CTkLabel(result_frame, text=feed_name, font=('Calibri', 20, 'bold'), wraplength=100)
+        feed_label.grid(row=0, column=1, pady=10, padx=10, sticky='w')
+
+        #desc_text_box = CTkTextbox(result_frame, height=50, font=('Calibri', 12), wrap='word', bg_color=result_frame.cget("fg_color"), fg_color=result_frame.cget("fg_color"), border_width=0)
+        #desc_text_box.grid(row=1, column=0, columnspan=2, pady=(0, 10), padx=10, sticky='nsew')
+        #desc_text_box.insert('0.0', feed_description if feed_description else "No description available.")
+        #desc_text_box.configure(state='disabled')
+
+        result_frame.grid_columnconfigure(1, weight=1)  # Make column 1 expandable
+        result_frame.bind("<Button-1>", lambda e, url=feed_url: view_feed(url))
+        feed_img_button.bind("<Button-1>", lambda e, url=feed_url: view_feed(url))
+        feed_label.bind("<Button-1>", lambda e, url=feed_url: view_feed(url))
+        #desc_text_box.bind("<Button-1>", lambda e, url=feed_url: view_feed(url))
+
+        print('Worked')
 
 global side_menu, new_feed_button, search_barE, disable_auto_resize, side_menu_label, ctk_separator
 
@@ -279,6 +323,11 @@ new_feed_button.pack(pady=10, padx=10, fill='x')
 search_barE = CTkEntry(side_menu, placeholder_text="Search Feeds", width=140)
 search_barE.pack(pady=10, padx=10, fill='x')
 
+global search_results_frame
+search_results_frame = CTkFrame(side_menu, corner_radius=0, fg_color=side_menu.cget("fg_color"))
+search_results_frame.pack(fill='both', expand=True, pady=(10,0), padx=10)
+
+search_barE.bind("<Return>", search)
 
 # logic to minimize and maximize side menu
 def smallify():
