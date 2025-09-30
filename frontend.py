@@ -4,7 +4,7 @@
 from customtkinter import CTk, CTkLabel, CTkFrame, CTkProgressBar, set_appearance_mode, set_default_color_theme
 
 # Set appearance mode and color theme
-set_appearance_mode("Dark") # System, Dark, Light
+set_appearance_mode("Light") # System, Dark, Light
 set_default_color_theme("green") # green, dark-blue, blue
 
 # Initialize the main application window
@@ -252,8 +252,8 @@ def view_feed(feed_url):
             ep_frame.grid_columnconfigure(0, weight=1)  # Make column 0 expandable
 
             if episodes_showed % 2 == 0:
-                ep_frame.configure(fg_color='gray20')
-                ep_desc.configure(bg_color='gray20', fg_color='gray20')
+                ep_frame.configure(fg_color=('gray80', 'gray20'))
+                ep_desc.configure(bg_color=('gray80', 'gray20'), fg_color=('gray80', 'gray20'))
 
             root.update()
 
