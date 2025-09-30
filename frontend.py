@@ -163,7 +163,7 @@ def home():
         else:
             feed_image = CTkImage(light_image=Image.open('assets/podcast_placeholder.png'), dark_image=Image.open('assets/podcast_placeholder.png'), size=(150, 150), text='')
 
-        feed_img_button = CTkButton(scrollable_frame, width=150, height=200, text='', compound='top', fg_color='transparent', hover_color='gray25', font=('Calibri', 15, 'bold'), image=feed_image, command=lambda url=feed_url: view_feed(url))
+        feed_img_button = CTkButton(scrollable_frame, width=150, height=200, text='', compound='top', fg_color='transparent', hover_color=('gray75', 'gray25'), font=('Calibri', 15, 'bold'), image=feed_image, command=lambda url=feed_url: view_feed(url))
         feed_img_button.grid(row=0, column=col, padx=10, pady=10)
         col += 1
 
