@@ -323,11 +323,17 @@ new_feed_button.pack(pady=10, padx=10, fill='x')
 search_barE = CTkEntry(side_menu, placeholder_text="Search Feeds", width=140)
 search_barE.pack(pady=10, padx=10, fill='x')
 
+# Settings button
+settingsB = CTkButton(side_menu, text='⚙️ Settings')
+settingsB.pack(pady=10, padx=10, fill='x', side='bottom')
+
+
 global search_results_frame
 search_results_frame = CTkFrame(side_menu, corner_radius=0, fg_color=side_menu.cget("fg_color"))
 search_results_frame.pack(fill='both', expand=True, pady=(10,0), padx=10)
 
 search_barE.bind("<Return>", search)
+
 
 # logic to minimize and maximize side menu
 def smallify():
@@ -382,7 +388,7 @@ def newfeed():
     clear_board()
     root.update_idletasks()
 
-    floating_frame = CTkFrame(mainframe, corner_radius=20, fg_color='gray15', width=600, height=400)
+    floating_frame = CTkFrame(mainframe, corner_radius=20, fg_color=('grey85', 'gray15'), width=600, height=400)
     floating_frame.place(relx=0.5, rely=0.5, anchor='center')
 
     headerL = CTkLabel(floating_frame, text='Add New Feed', font=('Calibri', 50, 'bold'), justify='left')
