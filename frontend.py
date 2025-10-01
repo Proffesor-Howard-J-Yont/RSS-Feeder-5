@@ -4,7 +4,7 @@
 from customtkinter import CTk, CTkLabel, CTkFrame, CTkProgressBar, set_appearance_mode, set_default_color_theme
 
 # Set appearance mode and color theme
-set_appearance_mode("Light") # System, Dark, Light
+set_appearance_mode("System") # System, Dark, Light
 set_default_color_theme("green") # green, dark-blue, blue
 
 # Initialize the main application window
@@ -311,7 +311,7 @@ mainframe.pack(fill='both', expand=True, side='right')
 side_menu = CTkScrollableFrame(root, corner_radius=0, fg_color=root_color, width=250)
 side_menu.pack(side='left', fill='y')
 
-side_menu_label = CTkLabel(side_menu, text="📰 Podcasts", font=("Calibri", 30, 'bold'))
+side_menu_label = CTkLabel(side_menu, text="📰 Podcasts", font=("Calibri", 30))
 side_menu_label.pack(pady=20, padx=10, anchor='w')
 
 ctk_separator = CTkSeparator(side_menu, orientation="horizontal", line_weight=2, length=240)
