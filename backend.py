@@ -76,7 +76,7 @@ def add_feed(feed_url):
             # Clean up entry data
             title, description, cover_art_url, audio_url, pub_date = clean_up_feed(entry)
 
-            c.execute(f'''INSERT INTO "{table_name}" (title, description, audio_url, image_url, datetime(pub_date), downloaded)
+            c.execute(f'''INSERT INTO "{table_name}" (title, description, audio_url, image_url, pub_date, downloaded)
                           VALUES (?, ?, ?, ?, ?, ?)''',
                       (title, description, audio_url, cover_art_url, pub_date, 0))
             conn.commit()
@@ -117,7 +117,7 @@ def update_all_feeds():
                 if audio_url == last_audio_url:
                     break
 
-                c.execute(f'''INSERT INTO "{table_name}" (title, description, audio_url, image_url, datetime(pub_date), downloaded)
+                c.execute(f'''INSERT INTO "{table_name}" (title, description, audio_url, image_url, pub_date, downloaded)
                               VALUES (?, ?, ?, ?, ?, ?)''',
                           (title, description, audio_url, cover_art_url, pub_date, 0))
                 conn.commit()
