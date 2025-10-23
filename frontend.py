@@ -166,6 +166,51 @@ def home():
         feed_img_button = CTkButton(scrollable_frame, width=150, height=200, text='', compound='top', fg_color='transparent', hover_color=('gray75', 'gray25'), font=('Calibri', 15, 'bold'), image=feed_image, command=lambda url=feed_url: view_feed(url))
         feed_img_button.grid(row=0, column=col, padx=10, pady=10)
         col += 1
+    
+    # Featured 2 - left and right. left is the latest episode from the top podcast. right is another podcast.
+    featured_2_frame = CTkFrame(mainframe, fg_color=mainframe.cget("fg_color"))
+    featured_2_frame.pack(fill='x')
+
+    f2_left_frame = CTkFrame(featured_2_frame, corner_radius=20)
+    f2_left_frame.pack(side='left', fill='x', padx=20)
+
+    f2_left_title = CTkLabel(f2_left_frame, text='Latest Episode', font=('Calibri', 50, 'bold'))
+    f2_left_title.pack(pady=10, padx=20)
+
+    f2_left_grab = backend.grab_top_1_podcast()
+    print(f2_left_grab)
+
+    # Select title of most recent episode from the feed_url of f2_left_grab[0][2]
+    if len(f2_left_grab) == 0:
+        nofeedL = CTkLabel(f2_left_frame, text="No feeds available. Please add a new feed.", font=('Calibri', 20), text_color='gray40')
+        nofeedL.place(relx=0.5, rely=0.5, anchor='center')
+        return
+    
+    episode_title = backend.get_episodes_for_feed(feed_url)[0][0]
+
+    if not episode_title:
+        nofeedL = CTkLabel(f2_left_frame, text="No episodes available for this feed.", font=('Calibri', 20), text_color='gray40')
+        nofeedL.place(relx=0.5, rely=0.5, anchor='center')
+        return
+
+    f2_left_subtitle = CTkLabel(f2_left_frame, text=episode_title, font=('Calibri light', 20))
+    f2_left_subtitle.pack(pady=5)
+
+    
+    feed_image = None
+    feed_url = f2_left_grab[0][2]
+    backend.c.execute("SELECT image FROM feeds WHERE feed_url = ?", (feed_url,))
+    result = backend.c.fetchone()
+    if result and result[0]:
+        feed_image = CTkImage(light_image=Image.open(io.BytesIO(result[0])), dark_image=Image.open(io.BytesIO(result[0])), size=(300, 300))
+    else:
+        feed_image = CTkImage(light_image=Image.open('assets/podcast_placeholder.png'), dark_image=Image.open('assets/podcast_placeholder.png'), size=(150, 150), text='')
+
+    feed_img_label = CTkLabel(f2_left_frame, image=feed_image, text='')
+    feed_img_label.pack()
+
+    f2_left_subsubtitle = CTkLabel(f2_left_frame, text=f2_left_grab[0][0], font=('Calibri', 30))
+    f2_left_subsubtitle.pack(pady=5)
 
     
 
@@ -299,7 +344,35 @@ def search(e):
         feed_label.bind("<Button-1>", lambda e, url=feed_url: view_feed(url))
         #desc_text_box.bind("<Button-1>", lambda e, url=feed_url: view_feed(url))
 
-        print('Worked')
+def settings():
+    clear_board()
+    root.update_idletasks()
+
+    settings_frame = CTkFrame(mainframe, corner_radius=20)
+    settings_frame.pack(fill='x', pady=10, padx=10)
+
+    settingsL = CTkLabel(settings_frame, text="Settings", font=('Calibri', 50, 'bold'))
+    settingsL.pack(pady=20, padx=20, anchor='w')
+
+    # Appearance Mode
+    appearance_mode_label = CTkLabel(settings_frame, text="Appearance Mode:", font=('Calibri', 20))
+    appearance_mode_label.pack(pady=(20, 5), padx=20, anchor='w')
+
+    appearance_mode_optionmenu = CTkOptionMenu(settings_frame, values=["System", "Light", "Dark"], command=lambda mode: set_appearance_mode(mode))
+    appearance_mode_optionmenu.set("System")  # Set default value
+    appearance_mode_optionmenu.pack(pady=(0, 20), padx=20, anchor='w')
+
+    # Color Theme
+    color_theme_label = CTkLabel(settings_frame, text="Color Theme:", font=('Calibri', 20))
+    color_theme_label.pack(pady=(20, 5), padx=20, anchor='w')
+
+    color_theme_optionmenu = CTkOptionMenu(settings_frame, values=["green", "dark-blue", "blue"], command=lambda theme: set_default_color_theme(theme))
+    color_theme_optionmenu.set("green")  # Set default value
+    color_theme_optionmenu.pack(pady=(0, 20), padx=20, anchor='w')
+
+    # back button to return home
+    back_button = CTkButton(settings_frame, text="Back", width=100, command=lambda: home())
+    back_button.pack(pady=10, padx=10, anchor='w')
 
 global side_menu, new_feed_button, search_barE, disable_auto_resize, side_menu_label, ctk_separator
 
@@ -308,14 +381,18 @@ mainframe = CTkScrollableFrame(root, fg_color=root_color)
 mainframe.pack(fill='both', expand=True, side='right')
 
 # Side menu
-side_menu = CTkScrollableFrame(root, corner_radius=0, fg_color=root_color, width=250)
-side_menu.pack(side='left', fill='y')
+side_menu_container = CTkFrame(root, corner_radius=0, fg_color=root_color, width=250)
+side_menu_container.pack(side='left', fill='y')
+
+side_menu = CTkScrollableFrame(side_menu_container, corner_radius=0, fg_color=root_color, width=250)
+side_menu.pack(fill='y', expand=True, pady=(0,0))
 
 side_menu_label = CTkLabel(side_menu, text="📰 Podcasts", font=("Calibri", 30))
 side_menu_label.pack(pady=20, padx=10, anchor='w')
 
 ctk_separator = CTkSeparator(side_menu, orientation="horizontal", line_weight=2, length=240)
 ctk_separator.pack(fill='x', padx=10, pady=(0, 20))
+
 
 new_feed_button = CTkButton(side_menu, text=" + New Feed", width=140, command=lambda: newfeed())
 new_feed_button.pack(pady=10, padx=10, fill='x')
@@ -324,9 +401,10 @@ search_barE = CTkEntry(side_menu, placeholder_text="Search Feeds", width=140)
 search_barE.pack(pady=10, padx=10, fill='x')
 
 # Settings button
-settingsB = CTkButton(side_menu, text='⚙️ Settings')
-settingsB.pack(pady=10, padx=10, fill='x', side='bottom')
+settingsB = CTkButton(side_menu_container, text='⚙️ Settings', command=lambda: settings())
+settingsB.pack(side='bottom', pady=20, padx=10, fill='x')
 
+root.update()
 
 global search_results_frame
 search_results_frame = CTkFrame(side_menu, corner_radius=0, fg_color=side_menu.cget("fg_color"))
@@ -409,7 +487,8 @@ def add_feed_click(feed_url):
     subprocess.Popen(["python", "backend.py", feed_url])
 
     clear_board()
-    root.update_idletasks()
+    
+    mainframe.update_idletasks()
 
     floating_frame = CTkFrame(mainframe, corner_radius=20, fg_color='gray15', width=600, height=400)
     floating_frame.place(relx=0.5, rely=0.5, anchor='center')
