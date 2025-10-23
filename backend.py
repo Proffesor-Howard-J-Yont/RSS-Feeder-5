@@ -68,7 +68,7 @@ def add_feed(feed_url):
         conn.commit()
 
         update_progress(75, "Storing podcast episodes...")
-        c.execute(f'CREATE TABLE IF NOT EXISTS "{table_name}" (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, description TEXT, audio_url TEXT, image_url TEXT, pub_date TIMESTAMP, downloaded BOOLEAN DEFAULT 0)')
+        c.execute(f'CREATE TABLE IF NOT EXISTS "{table_name}" (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, description TEXT, audio_url TEXT, image_url TEXT, datetime(pub_date) TIMESTAMP, downloaded BOOLEAN DEFAULT 0)')
         conn.commit()
         num_entries = len(feed.entries)
         loading_increment = 25.00 / num_entries
@@ -108,7 +108,7 @@ def update_all_feeds():
                 print(f"Feed at {feed_url} is malformed or invalid")
                 continue
 
-            last_entry = c.execute(f'SELECT audio_url FROM "{table_name}" ORDER BY pub_date DESC LIMIT 1').fetchone()
+            last_entry = c.execute(f'SELECT audio_url FROM "{table_name}" ORDER BY datetime(pub_date) DESC LIMIT 1').fetchone()
             last_audio_url = last_entry[0] if last_entry else None
 
             for entry in feed.entries:
@@ -164,7 +164,7 @@ def get_episodes_for_feed(feed_url):
     if not result:
         return []
     table_name = result[0]
-    c.execute(f'SELECT title, description, audio_url, image_url, pub_date, downloaded FROM "{table_name}" ORDER BY pub_date DESC, id DESC')
+    c.execute(f'SELECT title, description, audio_url, image_url, datetime(pub_date), downloaded FROM "{table_name}" ORDER BY datetime(pub_date) DESC, id DESC')
     return c.fetchall()
 
 def grab_top_10_podcasts():
