@@ -159,12 +159,12 @@ def get_feed_details(feed_url):
 
 def get_episodes_for_feed(feed_url):
     # Get the table name for the feed
-    c.execute("SELECT table_name FROM feeds WHERE feed_url = ? ORDER BY pub_date DESC, id DESC" , (feed_url,))
+    c.execute("SELECT table_name FROM feeds WHERE feed_url = ?" , (feed_url,))
     result = c.fetchone()
     if not result:
         return []
     table_name = result[0]
-    c.execute(f'SELECT title, description, audio_url, image_url, pub_date, downloaded FROM "{table_name}"')
+    c.execute(f'SELECT title, description, audio_url, image_url, pub_date, downloaded FROM "{table_name}" ORDER BY pub_date DESC, id DESC')
     return c.fetchall()
 
 def grab_top_10_podcasts():
