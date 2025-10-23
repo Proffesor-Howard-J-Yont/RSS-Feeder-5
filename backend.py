@@ -159,7 +159,7 @@ def get_feed_details(feed_url):
 
 def get_episodes_for_feed(feed_url):
     # Get the table name for the feed
-    c.execute("SELECT table_name FROM feeds WHERE feed_url = ?", (feed_url,))
+    c.execute("SELECT table_name FROM feeds WHERE feed_url = ? ORDER BY pub_date DESC, id DESC" , (feed_url,))
     result = c.fetchone()
     if not result:
         return []
