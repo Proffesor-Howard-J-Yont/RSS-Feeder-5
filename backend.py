@@ -73,30 +73,8 @@ def add_feed(feed_url):
         num_entries = len(feed.entries)
         loading_increment = 25.00 / num_entries
         for entry in feed.entries:
-            title = entry.title
-            description = entry.summary if 'summary' in entry else ''
-            cover_art_url = entry.image.href if 'image' in entry and 'href' in entry.image else (entry.itunes_image.href if 'itunes_image' in entry and 'href' in entry.itunes_image else None)
-            audio_url = entry.enclosures[0].href if 'enclosures' in entry and len(entry.enclosures) > 0 else None
-            pub_date = entry.published if 'published' in entry else None
-            # clean up from unusable charachters (just in case) as well as clean up from /u200b, /u2060 charachter
-            title = title.replace('\u200b', '').strip()
-            title = title.replace('\u2060', '').strip()
-            title = title.replace('\ufeff', "").strip()
-            description = description.replace('\u200b', '').strip()
-            description = description.replace('\u2060', '').strip()
-            description = description.replace('\ufeff', "").strip()
-            if cover_art_url:
-                cover_art_url = cover_art_url.replace('\u200b', '').strip()
-                cover_art_url = cover_art_url.replace('\u2060', '').strip()
-                cover_art_url = cover_art_url.replace('\ufeff', "").strip()
-            if audio_url:
-                audio_url = audio_url.replace('\u200b', '').strip()
-                audio_url = audio_url.replace('\u2060', '').strip()
-                audio_url = audio_url.replace('\ufeff', "").strip()
-            if pub_date:
-                pub_date = pub_date.replace('\u200b', '').strip()
-                pub_date = pub_date.replace('\u2060', '').strip()
-                pub_date = pub_date.replace('\ufeff', "").strip()
+            # Clean up entry data
+            title, description, cover_art_url, audio_url, pub_date = clean_up_feed(entry)
 
             c.execute(f'''INSERT INTO "{table_name}" (title, description, audio_url, image_url, pub_date, downloaded)
                           VALUES (?, ?, ?, ?, ?, ?)''',
@@ -110,6 +88,66 @@ def add_feed(feed_url):
         return False
 
     update_progress(100, "Feed added successfully!")
+
+def update_all_feeds():
+    c.execute("SELECT * FROM feeds")
+    for row in c:
+        if row[6] == 1:
+            table_name = row[0]
+            feed_url = row[4]
+
+            response = requests.head(feed_url, allow_redirects=True, timeout=5)
+            if not 200 <= response.status_code < 400:
+                print(f"HTTP error for {feed_url}. Status: {response.status_code}")
+                continue
+
+            feed_content = requests.get(feed_url, timeout=15)
+
+            feed = feedparser.parse(feed_content.text)
+            if feed.bozo == 1:
+                print(f"Feed at {feed_url} is malformed or invalid")
+                continue
+
+            last_entry = c.execute(f'SELECT audio_url FROM "{table_name}" ORDER BY pub_date DESC LIMIT 1').fetchone()
+            last_audio_url = last_entry[0] if last_entry else None
+
+            for entry in feed.entries:
+                title, description, cover_art_url, audio_url, pub_date = clean_up_feed(entry)
+
+                if audio_url == last_audio_url:
+                    break
+
+                c.execute(f'''INSERT INTO "{table_name}" (title, description, audio_url, image_url, pub_date, downloaded)
+                              VALUES (?, ?, ?, ?, ?, ?)''',
+                          (title, description, audio_url, cover_art_url, pub_date, 0))
+                conn.commit()
+
+def clean_up_feed(entry):
+    title = entry.title
+    description = entry.summary if 'summary' in entry else ''
+    cover_art_url = entry.image.href if 'image' in entry and 'href' in entry.image else (entry.itunes_image.href if 'itunes_image' in entry and 'href' in entry.itunes_image else None)
+    audio_url = entry.enclosures[0].href if 'enclosures' in entry and len(entry.enclosures) > 0 else None
+    pub_date = entry.published if 'published' in entry else None
+
+    title = title.replace('\u200b', '').strip()
+    title = title.replace('\u2060', '').strip()
+    title = title.replace('\ufeff', "").strip()
+    description = description.replace('\u200b', '').strip()
+    description = description.replace('\u2060', '').strip()
+    description = description.replace('\ufeff', "").strip()
+    if cover_art_url:
+        cover_art_url = cover_art_url.replace('\u200b', '').strip()
+        cover_art_url = cover_art_url.replace('\u2060', '').strip()
+        cover_art_url = cover_art_url.replace('\ufeff', "").strip()
+    if audio_url:
+        audio_url = audio_url.replace('\u200b', '').strip()
+        audio_url = audio_url.replace('\u2060', '').strip()
+        audio_url = audio_url.replace('\ufeff', "").strip()
+    if pub_date:
+        pub_date = pub_date.replace('\u200b', '').strip()
+        pub_date = pub_date.replace('\u2060', '').strip()
+        pub_date = pub_date.replace('\ufeff', "").strip()
+    return title, description, cover_art_url, audio_url, pub_date
 
 def grab_top_1_podcast():
     c.execute("SELECT name, description, feed_url, amt_clicked FROM feeds ORDER BY amt_clicked DESC LIMIT 1")
