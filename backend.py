@@ -1,7 +1,6 @@
 import sqlite3
 import requests
 import feedparser
-import uuid
 import json
 import sys  # Add this import at the top
 
@@ -9,7 +8,6 @@ conn = sqlite3.connect('feeds.db')
 c = conn.cursor()
 c.execute('''
     CREATE TABLE IF NOT EXISTS feeds (
-        table_name TEXT UNIQUE PRIMARY KEY,
         name TEXT NOT NULL,
         description TEXT,
         image BLOB,
@@ -61,66 +59,16 @@ def add_feed(feed_url):
                 print(f"Failed to download feed image from {image_url}: {e}")
 
         update_progress(60, "Storing podcast in database...")
-        table_name = str(uuid.uuid4())
-        c.executemany('''INSERT OR IGNORE INTO feeds (table_name, name, description, image, feed_url, amt_clicked, auto_update, latest_clicked)
-                         VALUES (?, ?, ?, ?, ?, ?, ?, ?)''',
-                       [(table_name, feed.feed.title, feed.feed.description, feed_image, feed_url, 0, 0, None)])
+        c.executemany('''INSERT OR IGNORE INTO feeds (name, description, image, feed_url, amt_clicked, latest_clicked)
+                         VALUES (?, ?, ?, ?, ?, ?)''',
+                       [(feed.feed.title, feed.feed.description, feed_image, feed_url, 0, None)])
         conn.commit()
-
-        update_progress(75, "Storing podcast episodes...")
-        c.execute(f'CREATE TABLE IF NOT EXISTS "{table_name}" (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, description TEXT, audio_url TEXT, image_url TEXT, datetime(pub_date) TIMESTAMP, downloaded BOOLEAN DEFAULT 0)')
-        conn.commit()
-        num_entries = len(feed.entries)
-        loading_increment = 25.00 / num_entries
-        for entry in feed.entries:
-            # Clean up entry data
-            title, description, cover_art_url, audio_url, pub_date = clean_up_feed(entry)
-
-            c.execute(f'''INSERT INTO "{table_name}" (title, description, audio_url, image_url, pub_date, downloaded)
-                          VALUES (?, ?, ?, ?, ?, ?)''',
-                      (title, description, audio_url, cover_art_url, pub_date, 0))
-            conn.commit()
-            loading_bar = 75.00
-            loading_bar += int(loading_increment)
     
     except requests.exceptions.RequestException as e:
         update_progress(0, f"Connection error: {str(e)}")
         return False
 
     update_progress(100, "Feed added successfully!")
-
-def update_all_feeds():
-    c.execute("SELECT * FROM feeds")
-    for row in c:
-        if row[6] == 1:
-            table_name = row[0]
-            feed_url = row[4]
-
-            response = requests.head(feed_url, allow_redirects=True, timeout=5)
-            if not 200 <= response.status_code < 400:
-                print(f"HTTP error for {feed_url}. Status: {response.status_code}")
-                continue
-
-            feed_content = requests.get(feed_url, timeout=15)
-
-            feed = feedparser.parse(feed_content.text)
-            if feed.bozo == 1:
-                print(f"Feed at {feed_url} is malformed or invalid")
-                continue
-
-            last_entry = c.execute(f'SELECT audio_url FROM "{table_name}" ORDER BY datetime(pub_date) DESC LIMIT 1').fetchone()
-            last_audio_url = last_entry[0] if last_entry else None
-
-            for entry in feed.entries:
-                title, description, cover_art_url, audio_url, pub_date = clean_up_feed(entry)
-
-                if audio_url == last_audio_url:
-                    break
-
-                c.execute(f'''INSERT INTO "{table_name}" (title, description, audio_url, image_url, pub_date, downloaded)
-                              VALUES (?, ?, ?, ?, ?, ?)''',
-                          (title, description, audio_url, cover_art_url, pub_date, 0))
-                conn.commit()
 
 def clean_up_feed(entry):
     title = entry.title
@@ -157,15 +105,23 @@ def get_feed_details(feed_url):
     c.execute("SELECT name, description, feed_url, amt_clicked FROM feeds WHERE feed_url = ?", (feed_url,))
     return c.fetchall()
 
-def get_episodes_for_feed(feed_url):
-    # Get the table name for the feed
-    c.execute("SELECT table_name FROM feeds WHERE feed_url = ?" , (feed_url,))
-    result = c.fetchone()
-    if not result:
-        return []
-    table_name = result[0]
-    c.execute(f'SELECT title, description, audio_url, image_url, datetime(pub_date), downloaded FROM "{table_name}" ORDER BY datetime(pub_date) DESC, id DESC')
-    return c.fetchall()
+def get_episodes_for_feed(feed_url, start_index=0, end_index=20):
+    # rewrite to fetch episodes from feedparser instead of DB
+    feed = feedparser.parse(feed_url)
+    episodes = []
+    for entry in feed.entries[start_index:end_index]:
+        title, description, cover_art_url, audio_url, pub_date = clean_up_feed(entry)
+        episodes.append((title, description, audio_url, cover_art_url, pub_date))
+    return episodes 
+
+    # # Get the table name for the feed
+    # c.execute("SELECT table_name FROM feeds WHERE feed_url = ?" , (feed_url,))
+    # result = c.fetchone()
+    # if not result:
+    #     return []
+    # table_name = result[0]
+    # c.execute(f'SELECT title, description, audio_url, image_url, datetime(pub_date), downloaded FROM "{table_name}" ORDER BY datetime(pub_date) DESC, id DESC')
+    # return c.fetchall()
 
 def grab_top_10_podcasts():
     c.execute("SELECT name, description, feed_url, amt_clicked FROM feeds ORDER BY amt_clicked DESC LIMIT 11")
