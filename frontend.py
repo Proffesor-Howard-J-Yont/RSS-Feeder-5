@@ -25,7 +25,7 @@ subtitle_label = CTkLabel(loading_frame, text="5th Generation", font=("Calibri",
 subtitle_label.pack(pady=5, padx=15)
 
 # Add a progress bar to the loading screen
-loading_progress = CTkProgressBar(loading_frame, mode="determinate", width=200)
+loading_progress = CTkProgressBar(loading_frame, mode="indeterminate", width=200)
 loading_progress.pack(pady=15, padx=15, fill="x")
 
 
@@ -41,6 +41,9 @@ import json
 import os
 import io
 topbgimage = CTkImage(light_image=Image.open('assets/home_img.png'), dark_image=Image.open('assets/home_img.png'), size=(1500, 300))
+
+# Update podcast episodes
+#backend.update_all_feeds()
 
 # ------------- Setup Complete -----------------
 loading_progress.stop()
@@ -126,7 +129,11 @@ def home():
     top_podcastsL.grid(row=0, column=0, padx=20, pady=10, sticky='w', columnspan=2)
 
     # Create a canvas and side arrow buttons for horizontal scrolling
-    canvas = CTkCanvas(top_podcasts_frame, height=250, highlightthickness=0, bg='grey17')
+    if get_appearance_mode() == 'Light':
+        canvas_bg = 'gray85'
+    else:
+        canvas_bg = 'gray17'
+    canvas = CTkCanvas(top_podcasts_frame, height=250, highlightthickness=0, background=canvas_bg)
     canvas.grid(row=1, column=1, padx=(20,0), pady=10, sticky='nsew')
 
     scrollbar = CTkScrollbar(top_podcasts_frame, orientation="horizontal", command=canvas.xview)
@@ -167,50 +174,11 @@ def home():
         feed_img_button.grid(row=0, column=col, padx=10, pady=10)
         col += 1
     
-    # Featured 2 - left and right. left is the latest episode from the top podcast. right is another podcast.
-    featured_2_frame = CTkFrame(mainframe, fg_color=mainframe.cget("fg_color"))
-    featured_2_frame.pack(fill='x')
+    # Featured episodes - H=There will be 6 new episodes from well used podcasts aranged in a 2x3 grid
+    featured_episodes_frame = CTkFrame(mainframe, fg_color=mainframe.cget("fg_color"), corner_radius=20)
+    featured_episodes_frame.pack(fill='x', pady=10, padx=10)
 
-    f2_left_frame = CTkFrame(featured_2_frame, corner_radius=20)
-    f2_left_frame.pack(side='left', fill='x', padx=20)
 
-    f2_left_title = CTkLabel(f2_left_frame, text='Latest Episode', font=('Calibri', 50, 'bold'))
-    f2_left_title.pack(pady=10, padx=20)
-
-    f2_left_grab = backend.grab_top_1_podcast()
-    print(f2_left_grab)
-
-    # Select title of most recent episode from the feed_url of f2_left_grab[0][2]
-    if len(f2_left_grab) == 0:
-        nofeedL = CTkLabel(f2_left_frame, text="No feeds available. Please add a new feed.", font=('Calibri', 20), text_color='gray40')
-        nofeedL.place(relx=0.5, rely=0.5, anchor='center')
-        return
-    
-    episode_title = backend.get_episodes_for_feed(feed_url)[0][0]
-
-    if not episode_title:
-        nofeedL = CTkLabel(f2_left_frame, text="No episodes available for this feed.", font=('Calibri', 20), text_color='gray40')
-        nofeedL.place(relx=0.5, rely=0.5, anchor='center')
-        return
-
-    f2_left_subtitle = CTkLabel(f2_left_frame, text=episode_title, font=('Calibri light', 20))
-    f2_left_subtitle.pack(pady=5)
-
-    
-    feed_image = None
-    feed_url = f2_left_grab[0][2]
-    backend.c.execute("SELECT image FROM feeds WHERE feed_url = ?", (feed_url,))
-    result = backend.c.fetchone()
-    if result and result[0]:
-        feed_image = CTkImage(light_image=Image.open(io.BytesIO(result[0])), dark_image=Image.open(io.BytesIO(result[0])), size=(300, 300))
-    else:
-        feed_image = CTkImage(light_image=Image.open('assets/podcast_placeholder.png'), dark_image=Image.open('assets/podcast_placeholder.png'), size=(150, 150), text='')
-
-    feed_img_label = CTkLabel(f2_left_frame, image=feed_image, text='')
-    feed_img_label.pack()
-
-    f2_left_subsubtitle = CTkLabel(f2_left_frame, text=f2_left_grab[0][0], font=('Calibri', 30))
-    f2_left_subsubtitle.pack(pady=5)
 
     
 
@@ -270,37 +238,65 @@ def view_feed(feed_url):
         latest_episodes = CTkLabel(mainframe, text='Latest', font=('Calibri', 40, 'italic'), justify='left')
         latest_episodes.pack(pady=(70, 20), padx=(70,0), anchor='w')
 
+        global start_index, end_index, episodes_showed, current_feed_url, load_more_episodes
+        start_index = 0
+        end_index = 20
         episodes_showed = 0
+        current_feed_url = feed_url
 
-        for episode in backend.get_episodes_for_feed(feed_url):
-            if episodes_showed >= 20:
-                break
+        root.update()
 
+        for episode in backend.get_episodes_for_feed(feed_url, start_index, end_index):
             episodes_showed += 1
-
-            ep_sep = CTkSeparator(mainframe, orientation="horizontal", line_weight=2)
-            ep_sep.pack(fill='x', padx=20, pady=20, expand=True)
-
-            ep_frame = CTkFrame(mainframe, corner_radius=10)
-            ep_frame.pack(fill='x', pady=5, padx=10)
-
-            ep_title = CTkLabel(ep_frame, text=episode[0], font=('Calibri', 20, 'bold'))
-            ep_title.grid(row=0, column=0, pady=(10, 0), padx=20, sticky='w')
-
-            ep_desc = CTkTextbox(ep_frame, height=100, font=('Calibri', 12), wrap='word', bg_color=ep_frame.cget("fg_color"), fg_color=ep_frame.cget("fg_color"), border_width=0)
-            ep_desc.grid(row=1, column=0, pady=(10, 0), padx=20, sticky='nsew')
-            ep_desc.insert('0.0', episode[1] if episode[1] else "No description available.")
-
-            ep_pub_date = CTkLabel(ep_frame, text=f"Published on: {episode[4] if episode[4] else 'Unknown'}", font=('Calibri', 12), text_color='gray40')
-            ep_pub_date.grid(row=2, column=0, pady=(0, 10), padx=20, sticky='w')
-
-            ep_frame.grid_columnconfigure(0, weight=1)  # Make column 0 expandable
-
-            if episodes_showed % 2 == 0:
-                ep_frame.configure(fg_color=('gray80', 'gray20'))
-                ep_desc.configure(bg_color=('gray80', 'gray20'), fg_color=('gray80', 'gray20'))
-
+            show_episode(episode, episodes_showed)
             root.update()
+
+        # Load more episodes button
+        load_more_episodes = CTkButton(mainframe, text="Load More Episodes", width=200, command=lambda: load_more_episodes_click())
+        load_more_episodes.pack(pady=20)
+            
+
+
+def load_more_episodes_click():
+    global start_index, end_index, episodes_showed, current_feed_url, load_more_episodes
+    load_more_episodes.destroy()
+    start_index += 20
+    end_index += 20
+
+    for episode in backend.get_episodes_for_feed(current_feed_url, start_index, end_index):
+        episodes_showed += 1
+        show_episode(episode, episodes_showed)
+
+        root.update()
+    
+    load_more_episodes = CTkButton(mainframe, text="Load More Episodes", width=200, command=lambda: load_more_episodes_click())
+    load_more_episodes.pack(pady=20)
+
+class show_episode:
+    def __init__(self, episode, episodes_showed):
+        ep_sep = CTkSeparator(mainframe, orientation="horizontal", line_weight=2)
+        ep_sep.pack(fill='x', padx=20, pady=20, expand=True)
+
+        ep_frame = CTkFrame(mainframe, corner_radius=10)
+        ep_frame.pack(fill='x', pady=5, padx=10)
+
+        ep_title = CTkLabel(ep_frame, text=episode[0], font=('Calibri', 20, 'bold'))
+        ep_title.grid(row=0, column=0, pady=(10, 0), padx=20, sticky='w')
+
+        ep_desc = CTkTextbox(ep_frame, height=100, font=('Calibri', 12), wrap='word', bg_color=ep_frame.cget("fg_color"), fg_color=ep_frame.cget("fg_color"), border_width=0)
+        ep_desc.grid(row=1, column=0, pady=(10, 0), padx=20, sticky='nsew')
+        ep_desc.insert('0.0', episode[1] if episode[1] else "No description available.")
+
+        ep_pub_date = CTkLabel(ep_frame, text=f"Published on: {episode[4] if episode[4] else 'Unknown'}", font=('Calibri', 12), text_color='gray40')
+        ep_pub_date.grid(row=2, column=0, pady=(0, 10), padx=20, sticky='w')
+
+        ep_frame.grid_columnconfigure(0, weight=1)  # Make column 0 expandable
+
+        if episodes_showed % 2 == 0:
+            ep_frame.configure(fg_color=('gray80', 'gray20'))
+            ep_desc.configure(bg_color=('gray80', 'gray20'), fg_color=('gray80', 'gray20'))
+
+        root.update()
 
 def search(e):
     global search_results_frame
