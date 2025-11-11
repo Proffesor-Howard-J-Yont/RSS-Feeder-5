@@ -2,7 +2,15 @@ import sqlite3
 import requests
 import feedparser
 import json
-import sys  # Add this import at the top
+import io
+import os
+import sys
+from mutagen.easyid3 import EasyID3
+from mutagen.mp3 import MP3
+from mutagen.id3 import ID3, APIC, PictureType, Encoding, COMM, USLT
+import mutagen
+import re
+from notifypy import Notify
 
 conn = sqlite3.connect('feeds.db')
 c = conn.cursor()
@@ -18,11 +26,6 @@ c.execute('''
     )
 ''')
 conn.commit()
-
-global loading_bar
-global loading_step
-loading_bar = 0.00
-loading_step = "Warming up..."
 
 def update_progress(progress, step):
     with open('progress.json', 'w') as f:
@@ -112,7 +115,7 @@ def get_episodes_for_feed(feed_url, start_index=0, end_index=20):
     for entry in feed.entries[start_index:end_index]:
         title, description, cover_art_url, audio_url, pub_date = clean_up_feed(entry)
         episodes.append((title, description, audio_url, cover_art_url, pub_date))
-    return episodes 
+    return episodes
 
     # # Get the table name for the feed
     # c.execute("SELECT table_name FROM feeds WHERE feed_url = ?" , (feed_url,))
@@ -125,7 +128,7 @@ def get_episodes_for_feed(feed_url, start_index=0, end_index=20):
 
 def grab_top_10_podcasts():
     c.execute("SELECT name, description, feed_url, amt_clicked FROM feeds ORDER BY amt_clicked DESC LIMIT 11")
-    # Skip the first one (top 1) and return the next 5
+    # Skip the first one (top 1) and return the next 10
     return c.fetchall()[1:11]
 
 def search_feeds(query):
@@ -134,6 +137,76 @@ def search_feeds(query):
         return []
     c.execute("SELECT name, description, feed_url, amt_clicked FROM feeds WHERE name LIKE ? OR description LIKE ? LIMIT 20", (like_query, like_query))
     return c.fetchall()
+
+def download_episode(feed_url, index):
+    def sanitize_filename(name):
+        return re.sub(r'[\\/*?:"<>|]', "", name)
+
+    feed = feedparser.parse(feed_url)
+    podcast_name = feed.feed.title
+    episode_title, description, cover_art_url, audio_url, pub_date = clean_up_feed(feed.entries[index])
+
+    try:
+        audio_response = requests.get(audio_url, stream=True)
+        audio_response.raise_for_status()
+
+        total_size = int(audio_response.headers.get('content-length', 0))
+        downloaded_size = 0
+
+        sanitized_podcast_name = sanitize_filename(podcast_name)
+        sanitized_episode_title = sanitize_filename(episode_title)
+
+        podcast_dir = os.path.join(os.getcwd(), 'Podcasts', sanitized_podcast_name)
+        os.makedirs(podcast_dir, exist_ok=True)
+
+        file_path = os.path.join(podcast_dir, f"{sanitized_episode_title}.mp3")
+        with open(file_path, 'wb') as f:
+            for chunk in audio_response.iter_content(chunk_size=4096):
+                if chunk:
+                    f.write(chunk)
+                    downloaded_size += len(chunk)
+                    progress = downloaded_size / total_size if total_size else 0
+                    update_progress(progress * 100, f"Downloading {episode_title}...")
+        try:
+            audio = MP3(file_path, ID3=ID3)
+            try:
+                audio.add_tags()
+            except mutagen.id3.error:
+                pass
+            try:
+                easy_tags = EasyID3(file_path)
+            except mutagen.id3.ID3NoHeaderError:
+                easy_tags = mutagen.File(file_path, easy=True)
+                easy_tags.add_tags()
+            easy_tags["title"] = episode_title
+            easy_tags["artist"] = podcast_name
+            easy_tags.save()
+            if cover_art_url:
+                try:
+                    image_response = requests.get(cover_art_url)
+                    image_data = image_response.content
+                    audio.tags.add(
+                        APIC(
+                            encoding=3,
+                            mime='image/jpeg',
+                            type=3,
+                            desc='Cover',
+                            data=image_data
+                        )
+                    )
+                except Exception as e:
+                    print(f"Error fetching episode image for metadata: {e}")
+            audio.save()
+        except Exception as e:
+            print(f"Error adding metadata: {e}")
+
+        notification = Notify()
+        notification.title = "Download Complete"
+        notification.message = f"{episode_title} has been downloaded."
+        notification.send()
+
+    except Exception as e:
+        print(f"Error downloading episode: {e}")
 
 # Add this at the bottom of the file
 if __name__ == "__main__":
