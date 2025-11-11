@@ -274,29 +274,38 @@ def load_more_episodes_click():
 
 class show_episode:
     def __init__(self, episode, episodes_showed):
-        ep_sep = CTkSeparator(mainframe, orientation="horizontal", line_weight=2)
-        ep_sep.pack(fill='x', padx=20, pady=20, expand=True)
+        global current_feed_url
+        self.episodes_showed = episodes_showed
 
-        ep_frame = CTkFrame(mainframe, corner_radius=10)
-        ep_frame.pack(fill='x', pady=5, padx=10)
+        self.ep_sep = CTkSeparator(mainframe, orientation="horizontal", line_weight=2)
+        self.ep_sep.pack(fill='x', padx=20, pady=20, expand=True)
 
-        ep_title = CTkLabel(ep_frame, text=episode[0], font=('Calibri', 20, 'bold'))
-        ep_title.grid(row=0, column=0, pady=(10, 0), padx=20, sticky='w')
+        self.ep_frame = CTkFrame(mainframe, corner_radius=10)
+        self.ep_frame.pack(fill='x', pady=5, padx=10)
 
-        ep_desc = CTkTextbox(ep_frame, height=100, font=('Calibri', 12), wrap='word', bg_color=ep_frame.cget("fg_color"), fg_color=ep_frame.cget("fg_color"), border_width=0)
-        ep_desc.grid(row=1, column=0, pady=(10, 0), padx=20, sticky='nsew')
-        ep_desc.insert('0.0', episode[1] if episode[1] else "No description available.")
+        self.ep_title = CTkLabel(self.ep_frame, text=episode[0], font=('Calibri', 20, 'bold'))
+        self.ep_title.grid(row=0, column=0, pady=(10, 0), padx=20, sticky='w')
 
-        ep_pub_date = CTkLabel(ep_frame, text=f"Published on: {episode[4] if episode[4] else 'Unknown'}", font=('Calibri', 12), text_color='gray40')
-        ep_pub_date.grid(row=2, column=0, pady=(0, 10), padx=20, sticky='w')
+        self.ep_desc = CTkTextbox(self.ep_frame, height=100, font=('Calibri', 12), wrap='word', bg_color=self.ep_frame.cget("fg_color"), fg_color=self.ep_frame.cget("fg_color"), border_width=0)
+        self.ep_desc.grid(row=1, column=0, pady=(10, 0), padx=20, sticky='nsew')
+        self.ep_desc.insert('0.0', episode[1] if episode[1] else "No description available.")
 
-        ep_frame.grid_columnconfigure(0, weight=1)  # Make column 0 expandable
+        self.ep_pub_date = CTkLabel(self.ep_frame, text=f"Published on: {episode[4] if episode[4] else 'Unknown'}", font=('Calibri', 12), text_color='gray40')
+        self.ep_pub_date.grid(row=2, column=0, pady=(0, 10), padx=20, sticky='w')
 
-        if episodes_showed % 2 == 0:
-            ep_frame.configure(fg_color=('gray80', 'gray20'))
-            ep_desc.configure(bg_color=('gray80', 'gray20'), fg_color=('gray80', 'gray20'))
+        self.ep_frame.grid_columnconfigure(0, weight=1)  # Make column 0 expandable
+
+        self.ep_download_button = CTkButton(self.ep_frame, text="Download Episode", width=150, command=lambda: download_episode(current_feed_url, self.episdoes_showed))
+        self.ep_download_button.grid(row=0, column=1, rowspan=3, padx=20, pady=10)
+
+        if self.episodes_showed % 2 == 0:
+            self.ep_frame.configure(fg_color=('gray80', 'gray20'))
+            self.ep_desc.configure(bg_color=('gray80', 'gray20'), fg_color=('gray80', 'gray20'))
 
         root.update()
+
+def download_episode(feed_url, episode_index):
+    backend.download_episode(feed_url, episode_index)
 
 def search(e):
     global search_results_frame
@@ -486,16 +495,16 @@ def add_feed_click(feed_url):
     
     mainframe.update_idletasks()
 
-    floating_frame = CTkFrame(mainframe, corner_radius=20, fg_color='gray15', width=600, height=400)
+    floating_frame = CTkFrame(mainframe, corner_radius=20, fg_color=('grey85', 'gray15'), width=600, height=400)
     floating_frame.place(relx=0.5, rely=0.5, anchor='center')
 
-    headerL = CTkLabel(floating_frame, text='Loading New Feed', font=('Calibri', 50, 'bold'))
+    headerL = CTkLabel(floating_frame, text='Loading New Feed', font=('Calibri', 50, 'bold'), text_color=('grey15', 'gray85'))
     headerL.pack(pady=(40, 0), padx=70)
 
-    subheaderL = CTkLabel(floating_frame, text="This may take a few minutes.", font=('Calibri', 20), text_color='gray40')
+    subheaderL = CTkLabel(floating_frame, text="This may take a few minutes.", font=('Calibri', 20), text_color=('grey15', 'gray85'))
     subheaderL.pack(pady=(10, 10), padx=10)
 
-    subheader2L = CTkLabel(floating_frame, text="...", font=('Calibri', 20, 'italic'))
+    subheader2L = CTkLabel(floating_frame, text="...", font=('Calibri', 20, 'italic'), text_color=('grey15', 'gray85'))
     subheader2L.pack(pady=40, padx=10)
 
     loading_progress = CTkProgressBar(floating_frame, mode="determinate", width=400)
