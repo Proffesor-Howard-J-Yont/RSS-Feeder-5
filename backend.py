@@ -168,11 +168,6 @@ def download_episode(feed_url, index):
                     progress = downloaded_size / total_size if total_size else 0
                     update_progress(progress * 100, f"Downloading {episode_title}...")
         try:
-            audio = MP3(file_path, ID3=ID3)
-            try:
-                audio.add_tags()
-            except mutagen.id3.error:
-                pass
             try:
                 easy_tags = EasyID3(file_path)
             except mutagen.id3.ID3NoHeaderError:
@@ -181,6 +176,11 @@ def download_episode(feed_url, index):
             easy_tags["title"] = episode_title
             easy_tags["artist"] = podcast_name
             easy_tags.save()
+            audio = MP3(file_path, ID3=ID3)
+            try:
+                audio.add_tags()
+            except mutagen.id3.error:
+                pass
             if cover_art_url:
                 try:
                     image_response = requests.get(cover_art_url)
@@ -200,10 +200,10 @@ def download_episode(feed_url, index):
         except Exception as e:
             print(f"Error adding metadata: {e}")
 
-        notification = Notify()
-        notification.title = "Download Complete"
-        notification.message = f"{episode_title} has been downloaded."
-        notification.send()
+        # notification = Notify()
+        # notification.title = "Download Complete"
+        # notification.message = f"{episode_title} has been downloaded."
+        # notification.send()
 
     except Exception as e:
         print(f"Error downloading episode: {e}")
