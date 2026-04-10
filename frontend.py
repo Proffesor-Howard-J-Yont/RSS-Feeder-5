@@ -2,6 +2,8 @@
 
 # Before importing libraries, a loading screen is shown
 from customtkinter import CTk, CTkLabel, CTkFrame, CTkProgressBar, set_appearance_mode, set_default_color_theme
+import threading
+
 
 # Set appearance mode and color theme
 set_appearance_mode("System") # System, Dark, Light
@@ -25,7 +27,7 @@ subtitle_label = CTkLabel(loading_frame, text="5th Generation", font=("Calibri",
 subtitle_label.pack(pady=5, padx=15)
 
 # Add a progress bar to the loading screen
-loading_progress = CTkProgressBar(loading_frame, mode="indeterminate", width=200)
+loading_progress = CTkProgressBar(loading_frame, mode="determinate", width=200)
 loading_progress.pack(pady=15, padx=15, fill="x")
 
 
@@ -295,7 +297,7 @@ class show_episode:
 
         self.ep_frame.grid_columnconfigure(0, weight=1)  # Make column 0 expandable
 
-        self.ep_download_button = CTkButton(self.ep_frame, text="Download Episode", width=150, command=lambda: download_episode(current_feed_url, self.episdoes_showed))
+        self.ep_download_button = CTkButton(self.ep_frame, text="Download Episode", width=150, command=lambda: download_episode(current_feed_url, self.episodes_showed))
         self.ep_download_button.grid(row=0, column=1, rowspan=3, padx=20, pady=10)
 
         if self.episodes_showed % 2 == 0:
@@ -306,6 +308,7 @@ class show_episode:
 
 def download_episode(feed_url, episode_index):
     backend.download_episode(feed_url, episode_index)
+    
 
 def search(e):
     global search_results_frame
